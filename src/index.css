@@ -1,0 +1,45 @@
+@import "tailwindcss";
+
+@theme {
+  /* -- Signal: color tokens -- */
+  --color-void: #0a0a0d;        /* app background, near-black */
+  --color-ember-deep: #16060a;  /* deep red-black surface (cards) */
+  --color-ember: #7a0e14;       /* base ember red, gradients */
+  --color-signal: #e8121d;      /* primary signal red — the orb, CTAs */
+  --color-signal-bright: #ff3b3b; /* highlight red, hover/active */
+  --color-bone: #f2edee;        /* primary text */
+  --color-mauve: #8a7b7d;       /* muted text */
+  --color-hairline: #2a1417;    /* borders on dark surfaces */
+  --color-online: #2ecc71;      /* presence dot, sparingly */
+
+  /* -- Type -- */
+  --font-display: "Clash Display", "General Sans", sans-serif;
+  --font-body: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  background: var(--color-void);
+  color: var(--color-bone);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Visible keyboard focus, kept on-brand rather than browser default */
+:focus-visible {
+  outline: 2px solid var(--color-signal);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
