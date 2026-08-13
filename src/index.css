@@ -2,15 +2,15 @@
 
 @theme {
   /* -- Signal: color tokens -- */
-  --color-void: #0a0a0d;        /* app background, near-black */
-  --color-ember-deep: #16060a;  /* deep red-black surface (cards) */
-  --color-ember: #7a0e14;       /* base ember red, gradients */
-  --color-signal: #e8121d;      /* primary signal red — the orb, CTAs */
-  --color-signal-bright: #ff3b3b; /* highlight red, hover/active */
-  --color-bone: #f2edee;        /* primary text */
-  --color-mauve: #8a7b7d;       /* muted text */
-  --color-hairline: #2a1417;    /* borders on dark surfaces */
-  --color-online: #2ecc71;      /* presence dot, sparingly */
+  --color-void: #0a0a0d;        
+  --color-ember-deep: #16060a;  
+  --color-ember: #7a0e14;       
+  --color-signal: #e8121d;      
+  --color-signal-bright: #ff3b3b; 
+  --color-bone: #f2edee;        
+  --color-mauve: #8a7b7d;       
+  --color-hairline: #2a1417;    
+  --color-online: #2ecc71;    
 
   /* -- Type -- */
   --font-display: "Clash Display", "General Sans", sans-serif;

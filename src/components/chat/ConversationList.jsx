@@ -26,11 +26,19 @@ export default function ConversationList({ conversations, activeId, onSelect }) 
       </div>
 
       <ul className="flex-1 overflow-y-auto px-2 pb-4">
-        {filtered.length === 0 && (
-          <li className="px-4 py-8 text-center font-body text-sm text-mauve">
-            No conversations match "{query}"
-          </li>
-        )}
+        {filtered.length === 0 && conversations.length === 0 && (
+            <li className="px-6 py-16 text-center">
+                <p className="font-display text-base text-bone">No conversations yet</p>
+                <p className="mt-2 font-body text-sm text-mauve">
+                    When someone messages you, it'll show up here.
+                    </p>
+                    </li>
+                )}
+                {filtered.length === 0 && conversations.length > 0 && (
+                    <li className="px-4 py-8 text-center font-body text-sm text-mauve">
+                        No conversations match "{query}"
+                        </li>
+                    )}
         {filtered.map((c) => {
           const active = c.id === activeId;
           return (

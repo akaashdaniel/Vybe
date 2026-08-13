@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import Avatar from "../Avatar";
 import MessageBubble from "./MessageBubble";
+import Orb from "../Orb";
 
 export default function MessageThread({ conversation, messages, onSend, onBack }) {
   const [draft, setDraft] = useState("");
@@ -14,11 +15,12 @@ export default function MessageThread({ conversation, messages, onSend, onBack }
 
   if (!conversation) {
     return (
-      <div className="hidden h-full flex-1 items-center justify-center bg-void md:flex">
+      <div className="hidden h-full flex-1 flex-col items-center justify-center gap-3 bg-void md:flex">
+        <Orb size={64} pulse={false} />
         <p className="font-body text-sm text-mauve">
-          Pick a conversation to start chatting
-        </p>
-      </div>
+            Pick a conversation to start chatting
+            </p>
+            </div>
     );
   }
 
@@ -59,7 +61,17 @@ export default function MessageThread({ conversation, messages, onSend, onBack }
 
       {/* Messages */}
       <div className="flex-1 space-y-2 overflow-y-auto px-4 py-4">
-        {messages.map((m) => (
+        {messages.length === 0 && (
+            <div className="flex h-full flex-col items-center justify-center text-center">
+                <p className="font-display text-base text-bone">
+                    Say hi to {conversation.name.split(" ")[0]}
+                    </p>
+                    <p className="mt-1 font-body text-sm text-mauve">
+                        No messages yet — send the first one.
+                        </p>
+                        </div>
+                    )}
+                    {messages.map((m) => (
           <MessageBubble key={m.id} message={m} />
         ))}
 
