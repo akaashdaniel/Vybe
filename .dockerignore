@@ -1,0 +1,7 @@
+@"
+node_modules
+dist
+.git
+.env
+npm-debug.log
+"@ | Out-File -Encoding utf8 .dockerignore
