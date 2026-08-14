@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import Avatar from "../Avatar";
 import MessageBubble from "./MessageBubble";
-import Orb from "../Orb";
+import Orb from "../ParticleOrb";
 import { formatDayLabel } from "../../lib/dateGroups";
 
 export default function MessageThread({ conversation, messages, onSend, onBack }) {

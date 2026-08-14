@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import Orb from "../components/Orb";
+import Orb from "../components/ParticleOrb";
 
 const container = {
   hidden: {},
