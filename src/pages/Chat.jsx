@@ -15,6 +15,7 @@ export default function Chat() {
       id: `m${Date.now()}`,
       from: "me",
       text,
+      date: new Date().toISOString(),
       time: new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }),
       status: "sent",
     };

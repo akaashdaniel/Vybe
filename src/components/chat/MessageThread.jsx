@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import Avatar from "../Avatar";
 import MessageBubble from "./MessageBubble";
 import Orb from "../Orb";
+import { formatDayLabel } from "../../lib/dateGroups";
 
 export default function MessageThread({ conversation, messages, onSend, onBack }) {
   const [draft, setDraft] = useState("");
@@ -31,8 +32,6 @@ export default function MessageThread({ conversation, messages, onSend, onBack }
     onSend(text);
     setDraft("");
 
-    // Simulated reply typing cue so the thread feels live before
-    // the socket layer exists. Remove once real presence events arrive.
     setShowTyping(true);
     setTimeout(() => setShowTyping(false), 1600);
   }
@@ -71,9 +70,22 @@ export default function MessageThread({ conversation, messages, onSend, onBack }
                         </p>
                         </div>
                     )}
-                    {messages.map((m) => (
-          <MessageBubble key={m.id} message={m} />
-        ))}
+                    {messages.map((m, i) => {
+                      const prev = messages[i - 1];
+                      const showDivider = !prev || formatDayLabel(prev.date) !== formatDayLabel(m.date);
+                      return (
+                      <div key={m.id}>
+                        {showDivider && (
+                          <div className="my-4 flex justify-center">
+                            <span className="rounded-full bg-ember-deep px-3 py-1 font-mono text-[11px] text-mauve">
+                              {formatDayLabel(m.date)}
+                              </span>
+                              </div>
+                            )}
+                            <MessageBubble message={m} />
+                            </div>
+                            );
+                            })}
 
         <AnimatePresence>
           {showTyping && (

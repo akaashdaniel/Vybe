@@ -12,7 +12,6 @@
   --color-hairline: #2a1417;    
   --color-online: #2ecc71;    
 
-  /* -- Type -- */
   --font-display: "Clash Display", "General Sans", sans-serif;
   --font-body: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
@@ -29,11 +28,18 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Visible keyboard focus, kept on-brand rather than browser default */
 :focus-visible {
   outline: 2px solid var(--color-signal);
   outline-offset: 2px;
   border-radius: 4px;
+}
+input {
+  font-size: 16px;
+}
+@media (min-width: 640px) {
+  input {
+    font-size: 0.875rem; /* restore text-sm on larger screens */
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
