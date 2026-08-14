@@ -23,7 +23,7 @@ export default function Signup() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {   
     e.preventDefault();
     setError("");
 
@@ -37,12 +37,22 @@ export default function Signup() {
     }
 
     setLoading(true);
-    // TODO: wire to real registration endpoint. Placeholder timing so the
-    // loading state is visible during frontend-only development.
-    setTimeout(() => {
-      setLoading(false);
+    try {
+      const res = await fetch("http://localhost:4000/api/auth/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, identifier, password }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Signup failed");
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("user", JSON.stringify(data.user));
       navigate("/chat");
-    }, 900);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (

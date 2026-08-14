@@ -20,8 +20,9 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
     setError("");
 
@@ -31,10 +32,22 @@ export default function Login() {
     }
 
     setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
+    try {
+      const res = await fetch("http://localhost:4000/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ identifier, password }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Login failed");
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("user", JSON.stringify(data.user));
       navigate("/chat");
-    }, 900);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -99,20 +112,27 @@ export default function Login() {
             />
           </div>
 
-          <div>
-            <label htmlFor="password" className="sr-only">
-              Password
-            </label>
-            <input
-              id="password"
-              type="password"
-              autoComplete="current-password"
-              placeholder="Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-full border border-hairline bg-ember-deep px-5 py-3.5 font-body text-sm text-bone placeholder-mauve outline-none transition focus:border-signal"
-            />
-          </div>
+          <div className="relative">
+  <label htmlFor="password" className="sr-only">
+    Password
+  </label>
+  <input
+    id="password"
+    type={showPassword ? "text" : "password"}
+    autoComplete="current-password"
+    placeholder="Password"
+    value={password}
+    onChange={(e) => setPassword(e.target.value)}
+    className="w-full rounded-full border border-hairline bg-ember-deep px-5 py-3.5 pr-14 font-body text-sm text-bone placeholder-mauve outline-none transition focus:border-signal"
+  />
+  <button
+    type="button"
+    onClick={() => setShowPassword((v) => !v)}
+    className="absolute right-4 top-1/2 -translate-y-1/2 font-mono text-xs text-mauve hover:text-bone"
+  >
+    {showPassword ? "hide" : "show"}
+  </button>
+</div>
 
           {error && (
             <p role="alert" className="px-2 font-mono text-xs text-signal-bright">

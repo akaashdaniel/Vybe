@@ -9,8 +9,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
-        <Route path="/chat" element={<Chat />} />
-      </Routes>
+        <Route path="/chat" element={localStorage.getItem("token") ? <Chat /> : <Login />} />      </Routes>
     </BrowserRouter>
   );
 }
