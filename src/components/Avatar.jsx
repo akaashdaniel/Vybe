@@ -1,3 +1,4 @@
+
 function initials(name) {
   return name
     .split(" ")

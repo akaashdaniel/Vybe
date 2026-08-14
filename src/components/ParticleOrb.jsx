@@ -1,11 +1,5 @@
 import { useEffect, useRef } from "react";
 
-/**
- * Particle-sphere orb: points distributed evenly on a sphere (Fibonacci
- * sphere), rotated over time, with a flowing sine-based ridge distortion
- * on top so it reads as "plasma" rather than a static ball of dots.
- * Rendered on canvas — a CSS-only approach can't do the depth/perspective.
- */
 export default function ParticleOrb({ size = 160, pulse = true, className = "" }) {
   const canvasRef = useRef(null);
 
@@ -50,8 +44,6 @@ export default function ParticleOrb({ size = 160, pulse = true, className = "" }
         const z = -p.x * sinY + p.z * cosY;
         const y = p.y;
 
-        // flowing ridge distortion — pushes points in/out along their
-        // own normal based on a moving sine field, this is the "plasma flow"
         const wave =
           Math.sin(x * 3 + t * 1.4) * 0.12 +
           Math.sin(y * 4 - t * 1.1) * 0.1;
@@ -60,20 +52,19 @@ export default function ParticleOrb({ size = 160, pulse = true, className = "" }
         return { x: x * rr, y: y * rr, z, depth: (z + 1) / 2 };
       });
 
-      // back-to-front so front particles draw on top
       projected.sort((a, b) => a.z - b.z);
 
       for (const p of projected) {
-        if (p.z < -0.15) continue; // cull far-back points, keeps it a sphere not a ball of yarn
+        if (p.z < -0.15) continue; 
         const screenX = cx + p.x;
         const screenY = cy + p.y;
         const size_ = 0.6 + p.depth * 1.6;
         const alpha = 0.15 + p.depth * 0.75;
 
-        // colour ramp across the visible face — signal-red family
+        // signal-red family
         const mix = (p.x / radius + 1) / 2;
-        const r = 232 + mix * 23;   // 232 -> 255
-        const g = 18 + mix * 100;   // 18  -> 118 (warms toward highlight)
+        const r = 232 + mix * 23;   
+        const g = 18 + mix * 100;   
         const b = 29 + mix * 60;
 
         ctx.beginPath();

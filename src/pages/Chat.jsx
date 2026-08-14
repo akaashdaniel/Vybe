@@ -1,7 +1,7 @@
 import { useState } from "react";
 import ConversationList from "../components/chat/ConversationList";
 import MessageThread from "../components/chat/MessageThread";
-import { conversations as initialConversations, messagesByConversation } from "../data/mockChats";
+import { conversations as initialConversations, messagesByConversation } from "../date/mockChats";
 
 export default function Chat() {
   const [activeId, setActiveId] = useState(null);
