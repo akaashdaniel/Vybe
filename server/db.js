@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS users (
   name TEXT NOT NULL,
   identifier TEXT UNIQUE NOT NULL,
   password_hash TEXT NOT NULL,
+  last_seen_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
@@ -33,9 +34,13 @@ CREATE TABLE IF NOT EXISTS messages (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 `;
+const MIGRATIONS = `
+ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMPTZ;
+`;
 
 async function initSchema() {
   await pool.query(SCHEMA);
+  await pool.query(MIGRATIONS);
   console.log("DB schema ready");
 }
 
