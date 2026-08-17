@@ -8,6 +8,7 @@ import { useNavigate } from "react-router-dom";
 export default function Chat() {
   const navigate = useNavigate();
   const currentUser = JSON.parse(localStorage.getItem("user") || "null");
+  const [onlineUsers, setOnlineUsers] = useState(new Set());
 
   function handleSignOut() {
     disconnectSocket();
@@ -21,7 +22,7 @@ export default function Chat() {
   const [loading, setLoading] = useState(true);
 
   // Load conversation list once, connect the live socket once.
-  useEffect(() => {
+ useEffect(() => {
     apiFetch("/conversations")
       .then((rows) => {
         setConversations(
@@ -29,7 +30,7 @@ export default function Chat() {
             id: r.id,
             name: r.other_user_name || "Unknown",
             avatarColor: "#7a0e14",
-            online: false, // presence isn't built yet
+            otherUserId: r.other_user_id,
             lastMessage: r.last_message || "Say hi!",
             lastTime: r.last_message_at
               ? new Date(r.last_message_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
@@ -41,6 +42,7 @@ export default function Chat() {
       .finally(() => setLoading(false));
 
     const socket = getSocket();
+
     socket.on("new_message", (message) => {
       setMessages((prev) => ({
         ...prev,
@@ -48,7 +50,24 @@ export default function Chat() {
       }));
     });
 
-    return () => socket.off("new_message");
+    socket.on("presence_snapshot", (userIds) => {
+      setOnlineUsers(new Set(userIds));
+    });
+
+    socket.on("presence", ({ userId, online }) => {
+      setOnlineUsers((prev) => {
+        const next = new Set(prev);
+        if (online) next.add(userId);
+        else next.delete(userId);
+        return next;
+      });
+    });
+
+    return () => {
+      socket.off("new_message");
+      socket.off("presence_snapshot");
+      socket.off("presence");
+    };
   }, []);
 
   function handleSelect(id) {
@@ -78,7 +97,7 @@ export default function Chat() {
           id: r.id,
           name: r.other_user_name || "Unknown",
           avatarColor: "#7a0e14",
-          online: false,
+          otherUserId: r.other_user_id,
           lastMessage: r.last_message || "Say hi!",
           lastTime: r.last_message_at
             ? new Date(r.last_message_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
@@ -92,7 +111,11 @@ export default function Chat() {
     }
   }
 
-  const activeConversation = conversations.find((c) => c.id === activeId) ?? null;
+const conversationsWithPresence = conversations.map((c) => ({
+    ...c,
+    online: onlineUsers.has(c.otherUserId),
+  }));
+  const activeConversation = conversationsWithPresence.find((c) => c.id === activeId) ?? null;
 
   if (loading) {
     return (
@@ -105,14 +128,14 @@ export default function Chat() {
   return (
     <div className="flex h-screen w-full overflow-hidden bg-void">
       <div className={`h-full w-full md:block ${activeId ? "hidden" : "block"} md:w-[360px]`}>
-        <ConversationList
-        conversations={conversations}
-        activeId={activeId}
-        onSelect={handleSelect}
-        onStartChat={handleStartChat}
-        onSignOut={handleSignOut}
-        />
-      </div>
+       <ConversationList
+       conversations={conversationsWithPresence}
+       activeId={activeId}
+       onSelect={handleSelect}
+       onStartChat={handleStartChat}
+       onSignOut={handleSignOut}
+       />
+       </div>
       <div className={`h-full w-full flex-1 md:block ${activeId ? "block" : "hidden"}`}>
         <MessageThread
           conversation={activeConversation}
