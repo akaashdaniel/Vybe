@@ -10,6 +10,7 @@ const { createClient } = require("redis");
 const { initSchema } = require("./db");
 const authRoutes = require("./routes/auth");
 const { requireAuth } = require("./middleware/auth");
+const conversationRoutes = require("./routes/conversations");
 const { registerSocketHandlers } = require("./sockets");
 
 const app = express();
@@ -17,6 +18,7 @@ app.use(cors());
 app.use(express.json());
 
 app.use("/api/auth", authRoutes);
+app.use("/api/conversations", conversationRoutes);
 app.get("/api/me", requireAuth, (req, res) => res.json({ userId: req.userId }));
 
 const server = http.createServer(app);

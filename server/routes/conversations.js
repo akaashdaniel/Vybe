@@ -5,8 +5,6 @@ const { requireAuth } = require("../middleware/auth");
 const router = express.Router();
 router.use(requireAuth);
 
-// List conversations for the logged-in user, with the other participant's
-// info and the most recent message (for the sidebar preview).
 router.get("/", async (req, res) => {
   const result = await pool.query(
     `SELECT c.id, c.name, c.is_group,
@@ -27,7 +25,7 @@ router.get("/", async (req, res) => {
   res.json(result.rows);
 });
 
-// Message history for a conversation
+// Message history 
 router.get("/:id/messages", async (req, res) => {
   const result = await pool.query(
     `SELECT id, sender_id, text, created_at FROM messages

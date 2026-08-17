@@ -9,6 +9,12 @@ function registerSocketHandlers(io) {
     });
 
     socket.on("send_message", async ({ conversationId, text }) => {
+      const membership = await pool.query(
+        "SELECT 1 FROM conversation_members WHERE conversation_id = $1 AND user_id = $2",
+        [conversationId, userId]
+      );
+      if (!membership.rows[0]) return; 
+      
       const result = await pool.query(
         "INSERT INTO messages (conversation_id, sender_id, text) VALUES ($1, $2, $3) RETURNING *",
         [conversationId, userId, text]
@@ -22,7 +28,7 @@ function registerSocketHandlers(io) {
     });
 
     socket.on("disconnect", () => {
-      // presence/last-seen updates go here later
+
     });
   });
 }
