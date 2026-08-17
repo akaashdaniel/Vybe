@@ -25,15 +25,12 @@ export default function MessageThread({ conversation, messages, onSend, onBack, 
     );
   }
 
-  function handleSubmit(e) {
+ function handleSubmit(e) {
     e.preventDefault();
     const text = draft.trim();
     if (!text) return;
     onSend(text);
     setDraft("");
-
-    setShowTyping(true);
-    setTimeout(() => setShowTyping(false), 1600);
   }
 
   return (
@@ -51,11 +48,11 @@ export default function MessageThread({ conversation, messages, onSend, onBack, 
         <div className="min-w-0">
           <p className="truncate font-body text-sm font-medium text-bone">
             {conversation.name}
-          </p>
-          <p className="font-mono text-[11px] text-mauve">
-            {conversation.online ? "online" : "last seen recently"}
-          </p>
-        </div>
+            </p>
+            <p className="font-mono text-[11px] text-mauve">
+              {conversation.online ? "online" : "last seen recently"}
+              </p>
+              </div>
       </div>
 
       {/* Messages */}
@@ -72,13 +69,12 @@ export default function MessageThread({ conversation, messages, onSend, onBack, 
                     )}
                     {messages.map((m, i) => {
                       const prev = messages[i - 1];
-                      const showDivider = !prev || formatDayLabel(prev.date) !== formatDayLabel(m.date);
-                      return (
+                      const showDivider = !prev || formatDayLabel(prev.created_at) !== formatDayLabel(m.created_at);                      return (
                       <div key={m.id}>
                         {showDivider && (
                           <div className="my-4 flex justify-center">
                             <span className="rounded-full bg-ember-deep px-3 py-1 font-mono text-[11px] text-mauve">
-                              {formatDayLabel(m.date)}
+                              {formatDayLabel(m.created_at)}
                               </span>
                               </div>
                             )}

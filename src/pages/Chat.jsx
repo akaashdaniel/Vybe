@@ -2,10 +2,19 @@ import { useEffect, useState } from "react";
 import ConversationList from "../components/chat/ConversationList";
 import MessageThread from "../components/chat/MessageThread";
 import { apiFetch } from "../lib/api";
-import { getSocket } from "../lib/socket";
+import { getSocket, disconnectSocket } from "../lib/socket";
+import { useNavigate } from "react-router-dom";
 
 export default function Chat() {
+  const navigate = useNavigate();
   const currentUser = JSON.parse(localStorage.getItem("user") || "null");
+
+  function handleSignOut() {
+    disconnectSocket();
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    navigate("/");
+  }
   const [conversations, setConversations] = useState([]);
   const [activeId, setActiveId] = useState(null);
   const [messages, setMessages] = useState({});
@@ -97,10 +106,11 @@ export default function Chat() {
     <div className="flex h-screen w-full overflow-hidden bg-void">
       <div className={`h-full w-full md:block ${activeId ? "hidden" : "block"} md:w-[360px]`}>
         <ConversationList
-          conversations={conversations}
-          activeId={activeId}
-          onSelect={handleSelect}
-          onStartChat={handleStartChat}
+        conversations={conversations}
+        activeId={activeId}
+        onSelect={handleSelect}
+        onStartChat={handleStartChat}
+        onSignOut={handleSignOut}
         />
       </div>
       <div className={`h-full w-full flex-1 md:block ${activeId ? "block" : "hidden"}`}>
