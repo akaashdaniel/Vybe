@@ -5,7 +5,7 @@ import MessageBubble from "./MessageBubble";
 import Orb from "../ParticleOrb";
 import { formatDayLabel } from "../../lib/dateGroups";
 
-export default function MessageThread({ conversation, messages, onSend, onBack }) {
+export default function MessageThread({ conversation, messages, onSend, onBack, currentUserId }) {
   const [draft, setDraft] = useState("");
   const [showTyping, setShowTyping] = useState(false);
   const bottomRef = useRef(null);
@@ -82,7 +82,7 @@ export default function MessageThread({ conversation, messages, onSend, onBack }
                               </span>
                               </div>
                             )}
-                            <MessageBubble message={m} />
+                            <MessageBubble message={m} currentUserId={currentUserId} />
                             </div>
                             );
                             })}

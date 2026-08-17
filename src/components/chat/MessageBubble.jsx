@@ -2,8 +2,9 @@ import { motion } from "framer-motion";
 
 const statusGlyph = { sent: "✓", delivered: "✓✓", read: "✓✓" };
 
-export default function MessageBubble({ message }) {
-  const mine = message.from === "me";
+export default function MessageBubble({ message, currentUserId }) {
+  const mine = message.sender_id === currentUserId;
+  
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
@@ -24,7 +25,7 @@ export default function MessageBubble({ message }) {
             mine ? "text-bone/70" : "text-mauve"
           }`}
         >
-          <span>{message.time}</span>
+          <span>{new Date(message.created_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</span>
           {mine && (
             <span className={message.status === "read" ? "text-bone" : ""}>
               {statusGlyph[message.status] ?? ""}

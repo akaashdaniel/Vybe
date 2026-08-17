@@ -1,37 +1,106 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import ConversationList from "../components/chat/ConversationList";
 import MessageThread from "../components/chat/MessageThread";
-import { conversations as initialConversations, messagesByConversation } from "../date/mockChats";
+import { apiFetch } from "../lib/api";
+import { getSocket } from "../lib/socket";
 
 export default function Chat() {
+  const currentUser = JSON.parse(localStorage.getItem("user") || "null");
+  const [conversations, setConversations] = useState([]);
   const [activeId, setActiveId] = useState(null);
-  const [messages, setMessages] = useState(messagesByConversation);
+  const [messages, setMessages] = useState({});
+  const [loading, setLoading] = useState(true);
 
-  const activeConversation = initialConversations.find((c) => c.id === activeId) ?? null;
+  // Load conversation list once, connect the live socket once.
+  useEffect(() => {
+    apiFetch("/conversations")
+      .then((rows) => {
+        setConversations(
+          rows.map((r) => ({
+            id: r.id,
+            name: r.other_user_name || "Unknown",
+            avatarColor: "#7a0e14",
+            online: false, // presence isn't built yet
+            lastMessage: r.last_message || "Say hi!",
+            lastTime: r.last_message_at
+              ? new Date(r.last_message_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
+              : "",
+            unread: 0,
+          }))
+        );
+      })
+      .finally(() => setLoading(false));
+
+    const socket = getSocket();
+    socket.on("new_message", (message) => {
+      setMessages((prev) => ({
+        ...prev,
+        [message.conversation_id]: [...(prev[message.conversation_id] ?? []), message],
+      }));
+    });
+
+    return () => socket.off("new_message");
+  }, []);
+
+  function handleSelect(id) {
+    setActiveId(id);
+    getSocket().emit("join_conversation", id);
+    if (!messages[id]) {
+      apiFetch(`/conversations/${id}/messages`).then((history) => {
+        setMessages((prev) => ({ ...prev, [id]: history }));
+      });
+    }
+  }
 
   function handleSend(text) {
     if (!activeId) return;
-    const newMessage = {
-      id: `m${Date.now()}`,
-      from: "me",
-      text,
-      date: new Date().toISOString(),
-      time: new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }),
-      status: "sent",
-    };
-    setMessages((prev) => ({
-      ...prev,
-      [activeId]: [...(prev[activeId] ?? []), newMessage],
-    }));
+    getSocket().emit("send_message", { conversationId: activeId, text });
+  }
+
+  async function handleStartChat(identifier) {
+    try {
+      const { id } = await apiFetch("/conversations", {
+        method: "POST",
+        body: JSON.stringify({ identifier }),
+      });
+      const fresh = await apiFetch("/conversations");
+      setConversations(
+        fresh.map((r) => ({
+          id: r.id,
+          name: r.other_user_name || "Unknown",
+          avatarColor: "#7a0e14",
+          online: false,
+          lastMessage: r.last_message || "Say hi!",
+          lastTime: r.last_message_at
+            ? new Date(r.last_message_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
+            : "",
+          unread: 0,
+        }))
+      );
+      handleSelect(id);
+    } catch (err) {
+      alert(err.message); // simple for now — swap for inline UI error later
+    }
+  }
+
+  const activeConversation = conversations.find((c) => c.id === activeId) ?? null;
+
+  if (loading) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-void">
+        <p className="font-body text-sm text-mauve">Loading conversations…</p>
+      </div>
+    );
   }
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-void">
       <div className={`h-full w-full md:block ${activeId ? "hidden" : "block"} md:w-[360px]`}>
         <ConversationList
-          conversations={initialConversations}
+          conversations={conversations}
           activeId={activeId}
-          onSelect={setActiveId}
+          onSelect={handleSelect}
+          onStartChat={handleStartChat}
         />
       </div>
       <div className={`h-full w-full flex-1 md:block ${activeId ? "block" : "hidden"}`}>
@@ -40,6 +109,7 @@ export default function Chat() {
           messages={messages[activeId] ?? []}
           onSend={handleSend}
           onBack={() => setActiveId(null)}
+          currentUserId={currentUser?.id}
         />
       </div>
     </div>
