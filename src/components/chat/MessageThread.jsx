@@ -4,15 +4,34 @@ import Avatar from "../Avatar";
 import MessageBubble from "./MessageBubble";
 import Orb from "../ParticleOrb";
 import { formatDayLabel } from "../../lib/dateGroups";
+import { getSocket } from "../../lib/socket";
 
 export default function MessageThread({ conversation, messages, onSend, onBack, currentUserId }) {
   const [draft, setDraft] = useState("");
   const [showTyping, setShowTyping] = useState(false);
   const bottomRef = useRef(null);
-
+  const typingTimeoutRef = useRef(null);
+  
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, showTyping]);
+  
+  useEffect(() => {
+    if (!conversation) return;
+    const socket = getSocket();
+    
+    function handleTyping({ conversationId }) {
+      if (conversationId !== conversation.id) return;
+      setShowTyping(true);
+      clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = setTimeout(() => setShowTyping(false), 2000);
+    }
+    socket.on("typing", handleTyping);
+    return () => {
+      socket.off("typing", handleTyping);
+      clearTimeout(typingTimeoutRef.current);
+    };
+  }, [conversation]);
 
   if (!conversation) {
     return (
@@ -110,12 +129,15 @@ export default function MessageThread({ conversation, messages, onSend, onBack, 
       {/* Composer */}
       <form onSubmit={handleSubmit} className="flex items-center gap-2 border-t border-hairline px-4 py-3">
         <input
-          type="text"
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          placeholder="Message"
-          aria-label="Type a message"
-          className="flex-1 rounded-full border border-hairline bg-ember-deep px-4 py-2.5 font-body text-sm text-bone placeholder-mauve outline-none transition focus:border-signal"
+         type="text"
+         value={draft}
+         onChange={(e) => {
+          setDraft(e.target.value);
+          getSocket().emit("typing", { conversationId: conversation.id });
+        }}
+        placeholder="Message"
+        aria-label="Type a message"
+        className="flex-1 rounded-full border border-hairline bg-ember-deep px-4 py-2.5 font-body text-sm text-bone placeholder-mauve outline-none transition focus:border-signal"
         />
         <button
           type="submit"
