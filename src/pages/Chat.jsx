@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import ConversationList from "../components/chat/ConversationList";
 import MessageThread from "../components/chat/MessageThread";
 import { apiFetch } from "../lib/api";
@@ -9,6 +9,7 @@ export default function Chat() {
   const navigate = useNavigate();
   const currentUser = JSON.parse(localStorage.getItem("user") || "null");
   const [onlineUsers, setOnlineUsers] = useState(new Set());
+  const activeIdRef = useRef(null);
 
   function handleSignOut() {
     disconnectSocket();
@@ -43,18 +44,21 @@ export default function Chat() {
 
     const socket = getSocket();
 
-    socket.on("new_message", (message) => {
+        socket.on("new_message", (message) => {
       setMessages((prev) => ({
         ...prev,
         [message.conversation_id]: [...(prev[message.conversation_id] ?? []), message],
       }));
+      if (message.conversation_id === activeIdRef.current) {
+        socket.emit("mark_read", { conversationId: message.conversation_id });
+      }
     });
 
     socket.on("presence_snapshot", (userIds) => {
       setOnlineUsers(new Set(userIds));
     });
 
-    socket.on("presence", ({ userId, online }) => {
+        socket.on("presence", ({ userId, online }) => {
       setOnlineUsers((prev) => {
         const next = new Set(prev);
         if (online) next.add(userId);
@@ -63,16 +67,29 @@ export default function Chat() {
       });
     });
 
+    socket.on("messages_read", ({ conversationId, readerId }) => {
+      setMessages((prev) => ({
+        ...prev,
+        [conversationId]: (prev[conversationId] ?? []).map((m) =>
+          m.sender_id !== readerId ? { ...m, status: "read" } : m
+        ),
+      }));
+    });
+
     return () => {
       socket.off("new_message");
       socket.off("presence_snapshot");
       socket.off("presence");
+      socket.off("messages_read");
     };
   }, []);
 
-  function handleSelect(id) {
+   function handleSelect(id) {
     setActiveId(id);
-    getSocket().emit("join_conversation", id);
+    activeIdRef.current = id;
+    const socket = getSocket();
+    socket.emit("join_conversation", id);
+    socket.emit("mark_read", { conversationId: id });
     if (!messages[id]) {
       apiFetch(`/conversations/${id}/messages`).then((history) => {
         setMessages((prev) => ({ ...prev, [id]: history }));

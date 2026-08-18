@@ -20,15 +20,15 @@ export default function MessageBubble({ message, currentUserId }) {
         }`}
       >
         <p className="font-body text-sm leading-relaxed">{message.text}</p>
-        <div
+                <div
           className={`mt-1 flex items-center justify-end gap-1 font-mono text-[10px] ${
             mine ? "text-bone/70" : "text-mauve"
           }`}
         >
           <span>{new Date(message.created_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</span>
           {mine && (
-            <span className={message.status === "read" ? "text-bone" : ""}>
-              {statusGlyph[message.status] ?? ""}
+            <span style={message.status === "read" ? { color: "#5aa9ff" } : undefined}>
+              {statusGlyph[message.status] ?? "✓"}
             </span>
           )}
         </div>
