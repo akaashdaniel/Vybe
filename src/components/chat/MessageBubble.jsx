@@ -1,6 +1,27 @@
 import { motion } from "framer-motion";
 
-const statusGlyph = { sent: "✓", delivered: "✓✓", read: "✓✓" };
+function TickIcon({ double, color }) {
+  return (
+    <svg width="16" height="11" viewBox="0 0 16 11" fill="none">
+      <path
+        d="M1 5.5L4.5 9L10.5 1"
+        stroke={color}
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      {double && (
+        <path
+          d="M5.5 5.5L9 9L15 1"
+          stroke={color}
+          strokeWidth="1.6"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      )}
+    </svg>
+  );
+}
 
 export default function MessageBubble({ message, currentUserId }) {
   const mine = message.sender_id === currentUserId;
@@ -26,10 +47,11 @@ export default function MessageBubble({ message, currentUserId }) {
           }`}
         >
           <span>{new Date(message.created_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</span>
-          {mine && (
-            <span style={message.status === "read" ? { color: "#5aa9ff" } : undefined}>
-              {statusGlyph[message.status] ?? "✓"}
-            </span>
+            {mine && (
+            <TickIcon
+              double={message.status === "delivered" || message.status === "read"}
+              color={message.status === "read" ? "#5aa9ff" : "currentColor"}
+            />
           )}
         </div>
       </div>

@@ -1,13 +1,11 @@
 const { pool } = require("../db");
 
-// userId -> number of open tabs/sockets for that user
 const onlineUsers = new Map();
 
 function registerSocketHandlers(io) {
   io.on("connection", (socket) => {
     const userId = socket.userId;
 
-    // Send this socket a snapshot of who's currently online
     socket.emit("presence_snapshot", Array.from(onlineUsers.keys()));
 
     const wasOffline = !onlineUsers.has(userId);
@@ -27,12 +25,35 @@ function registerSocketHandlers(io) {
       );
       if (!membership.rows[0]) return;
 
+      // is the other member currently online? if so, mark delivered right away
+      const others = await pool.query(
+        "SELECT user_id FROM conversation_members WHERE conversation_id = $1 AND user_id != $2",
+        [conversationId, userId]
+      );
+      const recipientOnline = others.rows.some((r) => onlineUsers.has(r.user_id));
+      const status = recipientOnline ? "delivered" : "sent";
+
       const result = await pool.query(
-        "INSERT INTO messages (conversation_id, sender_id, text) VALUES ($1, $2, $3) RETURNING *",
-        [conversationId, userId, text]
+        "INSERT INTO messages (conversation_id, sender_id, text, status) VALUES ($1, $2, $3, $4) RETURNING *",
+        [conversationId, userId, text, status]
       );
       const message = result.rows[0];
       io.to(`conversation:${conversationId}`).emit("new_message", message);
+    });
+
+    socket.on("mark_read", async ({ conversationId }) => {
+      const result = await pool.query(
+        `UPDATE messages SET status = 'read'
+         WHERE conversation_id = $1 AND sender_id != $2 AND status != 'read'
+         RETURNING id`,
+        [conversationId, userId]
+      );
+      if (result.rows.length > 0) {
+        io.to(`conversation:${conversationId}`).emit("messages_read", {
+          conversationId,
+          readerId: userId,
+        });
+      }
     });
 
     socket.on("typing", ({ conversationId }) => {
