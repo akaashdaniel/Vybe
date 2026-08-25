@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import ConversationList from "../components/chat/ConversationList";
 import MessageThread from "../components/chat/MessageThread";
 import { apiFetch } from "../lib/api";
@@ -128,10 +128,14 @@ export default function Chat() {
     }
   }
 
-const conversationsWithPresence = conversations.map((c) => ({
-    ...c,
-    online: onlineUsers.has(c.otherUserId),
-  }));
+const conversationsWithPresence = useMemo(
+  () =>
+    conversations.map((c) => ({
+      ...c,
+      online: onlineUsers.has(c.otherUserId),
+    })),
+  [conversations, onlineUsers]
+);
   const activeConversation = conversationsWithPresence.find((c) => c.id === activeId) ?? null;
 
   if (loading) {
@@ -151,6 +155,7 @@ const conversationsWithPresence = conversations.map((c) => ({
        onSelect={handleSelect}
        onStartChat={handleStartChat}
        onSignOut={handleSignOut}
+       currentUser={currentUser}
        />
        </div>
       <div className={`h-full w-full flex-1 md:block ${activeId ? "block" : "hidden"}`}>

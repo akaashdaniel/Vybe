@@ -1,7 +1,8 @@
 import { useState } from "react";
 import Avatar from "../Avatar";
 
-export default function ConversationList({ conversations, activeId, onSelect, onStartChat, onSignOut }) {  const [query, setQuery] = useState("");
+export default function ConversationList({ conversations, activeId, onSelect, onStartChat, onSignOut, currentUser }) {
+  const [query, setQuery] = useState("");
   const [showNewChat, setShowNewChat] = useState(false);
   const [newChatEmail, setNewChatEmail] = useState("");
   const filtered = conversations.filter((c) =>
@@ -10,7 +11,7 @@ export default function ConversationList({ conversations, activeId, onSelect, on
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between px-5 pb-3 pt-6">
+            <div className="flex items-center justify-between px-5 pb-3 pt-6">
         <span className="font-display text-lg tracking-wide text-bone">signal</span>
         <div className="flex items-center gap-2">
           <button
@@ -29,6 +30,20 @@ export default function ConversationList({ conversations, activeId, onSelect, on
           </button>
         </div>
       </div>
+
+      {currentUser && (
+        <div className="mx-4 mb-3 flex items-center gap-2 rounded-xl border border-hairline bg-ember-deep px-3 py-2">
+          <Avatar name={currentUser.name} color="#e8121d" size={28} />
+          <div className="min-w-0">
+            <p className="truncate font-body text-xs font-medium text-bone">
+              {currentUser.name}
+            </p>
+            <p className="truncate font-mono text-[10px] text-mauve">
+              {currentUser.identifier}
+            </p>
+          </div>
+        </div>
+      )}
 
       {showNewChat && (
         <form
