@@ -23,34 +23,69 @@ export default function Chat() {
   const [loading, setLoading] = useState(true);
 
   // Load conversation list once, connect the live socket once.
+  async function loadConversations() {
+    const rows = await apiFetch("/conversations");
+    setConversations(
+      rows.map((r) => ({
+        id: r.id,
+        name: r.other_user_name || "Unknown",
+        avatarColor: "#7a0e14",
+        otherUserId: r.other_user_id,
+        lastMessage: r.last_message || "Say hi!",
+        lastTime: r.last_message_at
+          ? new Date(r.last_message_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
+          : "",
+        unread: Number(r.unread_count) || 0,
+      }))
+    );
+  }
+
+  // Load conversation list once, connect the live socket once.
  useEffect(() => {
-    apiFetch("/conversations")
-      .then((rows) => {
-        setConversations(
-          rows.map((r) => ({
-            id: r.id,
-            name: r.other_user_name || "Unknown",
-            avatarColor: "#7a0e14",
-            otherUserId: r.other_user_id,
-            lastMessage: r.last_message || "Say hi!",
-            lastTime: r.last_message_at
-              ? new Date(r.last_message_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
-              : "",
-            unread: 0,
-          }))
-        );
-      })
-      .finally(() => setLoading(false));
+    loadConversations().finally(() => setLoading(false));
+
 
     const socket = getSocket();
 
-        socket.on("new_message", (message) => {
+           socket.on("new_message", (message) => {
       setMessages((prev) => ({
         ...prev,
         [message.conversation_id]: [...(prev[message.conversation_id] ?? []), message],
       }));
-      if (message.conversation_id === activeIdRef.current) {
+
+      const isActive = message.conversation_id === activeIdRef.current;
+      if (isActive) {
         socket.emit("mark_read", { conversationId: message.conversation_id });
+      }
+
+      // Keep the sidebar preview and unread badge current
+      setConversations((prev) =>
+        prev.map((c) =>
+          c.id === message.conversation_id
+            ? {
+                ...c,
+                lastMessage: message.text,
+                lastTime: new Date(message.created_at).toLocaleTimeString([], {
+                  hour: "numeric",
+                  minute: "2-digit",
+                }),
+                unread:
+                  isActive || message.sender_id === currentUser?.id
+                    ? 0
+                    : (c.unread || 0) + 1,
+              }
+            : c
+        )
+      );
+    });
+
+    // On reconnect, re-sync — we may have missed messages while offline
+    socket.on("connect", () => {
+      loadConversations();
+      if (activeIdRef.current) {
+        apiFetch(`/conversations/${activeIdRef.current}/messages`).then((history) => {
+          setMessages((prev) => ({ ...prev, [activeIdRef.current]: history }));
+        });
       }
     });
 
@@ -76,20 +111,24 @@ export default function Chat() {
       }));
     });
 
-    return () => {
+        return () => {
       socket.off("new_message");
       socket.off("presence_snapshot");
       socket.off("presence");
       socket.off("messages_read");
+      socket.off("connect");
     };
   }, []);
 
-   function handleSelect(id) {
+      function handleSelect(id) {
     setActiveId(id);
     activeIdRef.current = id;
     const socket = getSocket();
     socket.emit("join_conversation", id);
     socket.emit("mark_read", { conversationId: id });
+    setConversations((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, unread: 0 } : c))
+    );
     if (!messages[id]) {
       apiFetch(`/conversations/${id}/messages`).then((history) => {
         setMessages((prev) => ({ ...prev, [id]: history }));
