@@ -8,22 +8,30 @@ const { createAdapter } = require("@socket.io/redis-adapter");
 const { createClient } = require("redis");
 
 const { initSchema } = require("./db");
-const authRoutes = require("./routes/auth");
+const rateLimit = require("express-rate-limit");
 const { requireAuth } = require("./middleware/auth");
 const conversationRoutes = require("./routes/conversations");
 const { registerSocketHandlers } = require("./sockets");
 
+const ALLOWED_ORIGINS = (process.env.CORS_ORIGINS || "http://localhost:5173")
+  .split(",")
+  .map((s) => s.trim());
+
 const app = express();
-app.use(cors());
+app.use(cors({ origin: ALLOWED_ORIGINS }));
 app.use(express.json());
 
-app.use("/api/auth", authRoutes);
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  message: { error: "Too many attempts, try again later" },
+});
+app.use("/api/auth", authLimiter, authRoutes);
 app.use("/api/conversations", conversationRoutes);
 app.get("/api/me", requireAuth, (req, res) => res.json({ userId: req.userId }));
 
 const server = http.createServer(app);
-const io = new Server(server, { cors: { origin: "*" } });
-
+const io = new Server(server, { cors: { origin: ALLOWED_ORIGINS } });
 // Socket auth: token passed via `auth: { token }` on the client connect call
 io.use((socket, next) => {
   try {
