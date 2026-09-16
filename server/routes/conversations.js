@@ -6,10 +6,14 @@ const router = express.Router();
 router.use(requireAuth);
 
 router.get("/", async (req, res) => {
-  const result = await pool.query(
+    const result = await pool.query(
     `SELECT c.id, c.name, c.is_group,
             u.id AS other_user_id, u.name AS other_user_name,
-            m.text AS last_message, m.created_at AS last_message_at
+            m.text AS last_message, m.created_at AS last_message_at,
+            (SELECT COUNT(*) FROM messages
+             WHERE conversation_id = c.id
+               AND sender_id != $1
+               AND status != 'read') AS unread_count
      FROM conversations c
      JOIN conversation_members cm ON cm.conversation_id = c.id AND cm.user_id = $1
      LEFT JOIN conversation_members cm2 ON cm2.conversation_id = c.id AND cm2.user_id != $1
@@ -27,12 +31,25 @@ router.get("/", async (req, res) => {
 
 // Message history 
 router.get("/:id/messages", async (req, res) => {
-  const result = await pool.query(
-    `SELECT id, sender_id, text, created_at FROM messages
-     WHERE conversation_id = $1 ORDER BY created_at ASC`,
-    [req.params.id]
+  const limit = Math.min(Number(req.query.limit) || 50, 100);
+  const before = req.query.before; // ISO timestamp cursor for older pages
+
+  // Verify membership before returning anyone's messages
+  const membership = await pool.query(
+    "SELECT 1 FROM conversation_members WHERE conversation_id = $1 AND user_id = $2",
+    [req.params.id, req.userId]
   );
-  res.json(result.rows);
+  if (!membership.rows[0]) return res.status(403).json({ error: "Not a member" });
+
+  const result = await pool.query(
+    `SELECT id, sender_id, text, status, created_at FROM messages
+     WHERE conversation_id = $1
+       AND ($2::timestamptz IS NULL OR created_at < $2)
+     ORDER BY created_at DESC
+     LIMIT $3`,
+    [req.params.id, before || null, limit]
+  );
+  res.json(result.rows.reverse()); // oldest-first for rendering
 });
 
 // Start (or reuse) a direct conversation with another user by their identifier

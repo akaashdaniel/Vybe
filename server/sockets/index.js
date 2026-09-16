@@ -3,8 +3,18 @@ const { pool } = require("../db");
 const onlineUsers = new Map();
 
 function registerSocketHandlers(io) {
-  io.on("connection", (socket) => {
+    io.on("connection", async (socket) => {
     const userId = socket.userId;
+
+    // Join every conversation this user belongs to, so messages arrive live
+    // even for chats they haven't opened in this session.
+    const rooms = await pool.query(
+      "SELECT conversation_id FROM conversation_members WHERE user_id = $1",
+      [userId]
+    );
+    for (const row of rooms.rows) {
+      socket.join(`conversation:${row.conversation_id}`);
+    }
 
     socket.emit("presence_snapshot", Array.from(onlineUsers.keys()));
 
