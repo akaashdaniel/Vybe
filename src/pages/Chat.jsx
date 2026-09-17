@@ -5,11 +5,45 @@ import { apiFetch } from "../lib/api";
 import { getSocket, disconnectSocket } from "../lib/socket";
 import { useNavigate } from "react-router-dom";
 
+// Single source of truth for turning a DB row into the shape the UI uses.
+// Anything that fetches conversations from the API should go through this.
+function mapConversationRow(r) {
+  return {
+    id: r.id,
+    name: r.other_user_name || "Unknown",
+    avatarColor: "#7a0e14",
+    otherUserId: r.other_user_id,
+    lastMessage: r.last_message || "Say hi!",
+    lastMessageAt: r.last_message_at || null,
+    lastTime: r.last_message_at
+      ? new Date(r.last_message_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
+      : "",
+    unread: Number(r.unread_count) || 0,
+  };
+}
+
 export default function Chat() {
   const navigate = useNavigate();
   const currentUser = JSON.parse(localStorage.getItem("user") || "null");
+
   const [onlineUsers, setOnlineUsers] = useState(new Set());
+  const [conversations, setConversations] = useState([]);
+  const [activeId, setActiveId] = useState(null);
+  const [messages, setMessages] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
+
   const activeIdRef = useRef(null);
+
+  async function loadConversations() {
+    try {
+      const rows = await apiFetch("/conversations");
+      setConversations(rows.map(mapConversationRow));
+      setLoadError(null);
+    } catch (err) {
+      setLoadError(err.message || "Couldn't load conversations");
+    }
+  }
 
   function handleSignOut() {
     disconnectSocket();
@@ -17,37 +51,14 @@ export default function Chat() {
     localStorage.removeItem("user");
     navigate("/");
   }
-  const [conversations, setConversations] = useState([]);
-  const [activeId, setActiveId] = useState(null);
-  const [messages, setMessages] = useState({});
-  const [loading, setLoading] = useState(true);
 
   // Load conversation list once, connect the live socket once.
-  async function loadConversations() {
-    const rows = await apiFetch("/conversations");
-    setConversations(
-      rows.map((r) => ({
-        id: r.id,
-        name: r.other_user_name || "Unknown",
-        avatarColor: "#7a0e14",
-        otherUserId: r.other_user_id,
-        lastMessage: r.last_message || "Say hi!",
-        lastTime: r.last_message_at
-          ? new Date(r.last_message_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
-          : "",
-        unread: Number(r.unread_count) || 0,
-      }))
-    );
-  }
-
-  // Load conversation list once, connect the live socket once.
- useEffect(() => {
+  useEffect(() => {
     loadConversations().finally(() => setLoading(false));
-
 
     const socket = getSocket();
 
-           socket.on("new_message", (message) => {
+    socket.on("new_message", (message) => {
       setMessages((prev) => ({
         ...prev,
         [message.conversation_id]: [...(prev[message.conversation_id] ?? []), message],
@@ -65,6 +76,7 @@ export default function Chat() {
             ? {
                 ...c,
                 lastMessage: message.text,
+                lastMessageAt: message.created_at,
                 lastTime: new Date(message.created_at).toLocaleTimeString([], {
                   hour: "numeric",
                   minute: "2-digit",
@@ -93,7 +105,7 @@ export default function Chat() {
       setOnlineUsers(new Set(userIds));
     });
 
-        socket.on("presence", ({ userId, online }) => {
+    socket.on("presence", ({ userId, online }) => {
       setOnlineUsers((prev) => {
         const next = new Set(prev);
         if (online) next.add(userId);
@@ -111,7 +123,7 @@ export default function Chat() {
       }));
     });
 
-        return () => {
+    return () => {
       socket.off("new_message");
       socket.off("presence_snapshot");
       socket.off("presence");
@@ -120,7 +132,7 @@ export default function Chat() {
     };
   }, []);
 
-      function handleSelect(id) {
+  function handleSelect(id) {
     setActiveId(id);
     activeIdRef.current = id;
     const socket = getSocket();
@@ -147,34 +159,27 @@ export default function Chat() {
         method: "POST",
         body: JSON.stringify({ identifier }),
       });
-      const fresh = await apiFetch("/conversations");
-      setConversations(
-        fresh.map((r) => ({
-          id: r.id,
-          name: r.other_user_name || "Unknown",
-          avatarColor: "#7a0e14",
-          otherUserId: r.other_user_id,
-          lastMessage: r.last_message || "Say hi!",
-          lastTime: r.last_message_at
-            ? new Date(r.last_message_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
-            : "",
-          unread: 0,
-        }))
-      );
+      await loadConversations();
       handleSelect(id);
     } catch (err) {
-      alert(err.message); // simple for now — swap for inline UI error later
+      alert(err.message);
     }
   }
 
-const conversationsWithPresence = useMemo(
-  () =>
-    conversations.map((c) => ({
+  // Presence applied, then sorted most-recent-first — matches how every
+  // real chat app orders its conversation list.
+  const conversationsWithPresence = useMemo(() => {
+    const withPresence = conversations.map((c) => ({
       ...c,
       online: onlineUsers.has(c.otherUserId),
-    })),
-  [conversations, onlineUsers]
-);
+    }));
+    return withPresence.sort((a, b) => {
+      const aTime = a.lastMessageAt ? new Date(a.lastMessageAt).getTime() : 0;
+      const bTime = b.lastMessageAt ? new Date(b.lastMessageAt).getTime() : 0;
+      return bTime - aTime;
+    });
+  }, [conversations, onlineUsers]);
+
   const activeConversation = conversationsWithPresence.find((c) => c.id === activeId) ?? null;
 
   if (loading) {
@@ -185,18 +190,35 @@ const conversationsWithPresence = useMemo(
     );
   }
 
+  if (loadError) {
+    return (
+      <div className="flex h-screen w-full flex-col items-center justify-center gap-3 bg-void px-6 text-center">
+        <p className="font-body text-sm text-mauve">Couldn't reach the server: {loadError}</p>
+        <button
+          onClick={() => {
+            setLoading(true);
+            loadConversations().finally(() => setLoading(false));
+          }}
+          className="rounded-full bg-signal px-4 py-2 font-body text-xs font-medium text-bone hover:bg-signal-bright"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-screen w-full overflow-hidden bg-void">
       <div className={`h-full w-full md:block ${activeId ? "hidden" : "block"} md:w-[360px]`}>
-       <ConversationList
-       conversations={conversationsWithPresence}
-       activeId={activeId}
-       onSelect={handleSelect}
-       onStartChat={handleStartChat}
-       onSignOut={handleSignOut}
-       currentUser={currentUser}
-       />
-       </div>
+        <ConversationList
+          conversations={conversationsWithPresence}
+          activeId={activeId}
+          onSelect={handleSelect}
+          onStartChat={handleStartChat}
+          onSignOut={handleSignOut}
+          currentUser={currentUser}
+        />
+      </div>
       <div className={`h-full w-full flex-1 md:block ${activeId ? "block" : "hidden"}`}>
         <MessageThread
           conversation={activeConversation}
